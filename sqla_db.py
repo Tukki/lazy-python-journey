@@ -26,12 +26,17 @@ class DBSaver(object):
         self.conn = self.engine.connect()
 
     def save(self, data):
+        conn = self.engine.connect()
         ins = items.insert()
-        self.conn.execute(ins, **data)
+        conn.execute(ins, **data)
+        conn.close()
 
     def get_count(self):
+        conn = self.engine.connect()
         s = select([func.count(items.c.mid)])
-        return self.conn.execute(s).fetchone()[0]
+        count = conn.execute(s).fetchone()[0]
+        conn.close()
+        return count
 
 
 class DumpSaver(object):

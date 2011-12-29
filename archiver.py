@@ -1,6 +1,7 @@
 #_*_ coding: utf-8 _*_
 import argparse
 from BeautifulSoup import BeautifulSoup as Soup
+import sqlalchemy
 
 from utils import build_opener
 from auth import simulate_login
@@ -43,11 +44,12 @@ def archive_page(page, ignore=False):
     soup = Soup(page)
     mids = get_mids(soup.prettify())
     updated = False
+    print 'mids len', len(mids)
     for mid in mids:
         data = parse_weibo(soup, mid)
         try:
             saver.save(data)
-        except:
+        except sqlalchemy.exc.IntegrityError:
             if not ignore: 
                 updated = True
                 break
@@ -93,6 +95,7 @@ print local
 if remote > local:
     #计算由哪一页开始. 没有余数才由下一页开始获取数据
     #TODO 还是有个问题.已更新的那部分有删除情况.会导致这里的计算错位
+    #TODO 10不是个标准数
     quotien, remainer = divmod(local, per_page)
     num = remainer == 0 and (quotien + 1) or quotien
     print 'continue page %s' % num
