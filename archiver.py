@@ -53,6 +53,7 @@ def archive_page(page, ignore=False):
                 break
     #不在函数内递归,否则打印的错误信息太长了.
     current, total = get_page_info(soup)
+    #TODO 这个信息放在这里返回毫无意义
     print "done page %s / %s" % (current, total)
     return current, total, updated
 
@@ -67,7 +68,7 @@ def archive_page(page, ignore=False):
 #        #if double, update done
 #    return update 
 
-
+per_page = 10
 page = load_page(1)
 soup = Soup(page)
 
@@ -90,8 +91,10 @@ local = saver.get_count()
 print local
 
 if remote > local:
-    #计算由哪一页开始
-    num = local / 10 + 1
+    #计算由哪一页开始. 没有余数才由下一页开始获取数据
+    #TODO 还是有个问题.已更新的那部分有删除情况.会导致这里的计算错位
+    quotien, remainer = divmod(local, per_page)
+    num = remainer == 0 and (quotien + 1) or quotien
     print 'continue page %s' % num
     page = load_page(num)
     while True:
@@ -100,20 +103,3 @@ if remote > local:
             page = load_page(c+1)
         else:
             break
-
-
-
-        
-
-    
-
-
-#num = 1
-#while True:
-#    current, total = archive_page(num)
-#    if current < total:
-#       num = current + 1
-#    else:
-#        break
-
-#print 'count', saver.get_count()
