@@ -23,9 +23,11 @@ def simulate_login(opener, email, psw, remember=True):
     submit_to = SSO + get_submit_action(form)
     submit_data = get_datas(form)
     response = opener.open(submit_to, urllib.urlencode(submit_data))
-
+    
     #TODO 判断登录是否成功
     success_page = response.read()    
+    
+    #解析gsid
     gsid = parsing_gsid(success_page)
     success = gsid and True or False
     return success, gsid

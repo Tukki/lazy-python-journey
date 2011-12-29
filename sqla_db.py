@@ -3,6 +3,7 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy import (Table, Column, String, BigInteger, 
                         Boolean, DateTime)
+from sqlalchemy.sql import func, select
 
 metadata = MetaData()
 
@@ -27,6 +28,10 @@ class DBSaver(object):
     def save(self, data):
         ins = items.insert()
         self.conn.execute(ins, **data)
+
+    def get_count(self):
+        s = select([func.count(items.c.mid)])
+        return self.conn.execute(s).fetchone()[0]
 
 
 class DumpSaver(object):
