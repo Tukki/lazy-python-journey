@@ -36,6 +36,13 @@ def get_page_info(soup):
     return int(result.group(1)), int(result.group(2))
 
 
+def get_weibo_count(page):
+    pt = r'微博\[(\d+)\]'
+    result = re.findall(pt, page)
+    assert len(result) == 1
+    return int(result[0])
+
+
 def _is_retweet(wb):
     """
     至今没在原创的微博内容里面看到span.cmt

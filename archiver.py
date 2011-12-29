@@ -8,12 +8,14 @@ from pageparse import *
 
 #获取参数
 parser = argparse.ArgumentParser()
-parser.add_argument('-u', '--user', help='user')
+parser.add_argument('-u', '--user', help='user email')
 parser.add_argument('-p', '--psw', help="password")
+parser.add_argument('-t', '--target', help='target user ID')
 args = parser.parse_args()
 
 email = args.user
 psw = args.psw
+uid = args.target
 
 #构建连接器
 opener = build_opener()
@@ -22,15 +24,12 @@ opener = build_opener()
 success, gsid = simulate_login(opener, email, psw)
 print 'success: ', success
 print 'gsid   : ', gsid
+print 'target : ', uid
 
 from sqla_db import DBSaver, DumpSaver
 
-saver = DBSaver('test', debug=False)
-dump = DumpSaver('test')
-
-#TODO 简单点,先让用户自己填写需要的目标id算了.还没有找到
-uid = "2214658753"
-#uid = "1813080181"
+saver = DBSaver(uid, debug=False)
+dump = DumpSaver(uid)
 
 def load_page(num):
     """
@@ -40,63 +39,81 @@ def load_page(num):
     r = opener.open(url)
     return r.read()
 
-def archive_page(page_num):
-    page = load_page(page_num)
+def archive_page(page, ignore=False):
     soup = Soup(page)
     mids = get_mids(soup.prettify())
     updated = False
     for mid in mids:
         data = parse_weibo(soup, mid)
-        #dump.save(data)
-        saver.save(data)
-    #    if not success:
-    #        updated = True
-    #        break
-    #if updated:
-    #    check_and_start_archive()
-    #else:
-    #    if not the the last page:
-    #        go archive next page 
-    #    if is the last page 
-    #        done, archive done
-    #TODO 这种函数内递归,导致打印的错误信息太长了.
+        try:
+            saver.save(data)
+        except:
+            if not ignore: 
+                updated = True
+                break
+    #不在函数内递归,否则打印的错误信息太长了.
     current, total = get_page_info(soup)
     print "done page %s / %s" % (current, total)
-
-    #if current < total:
-    #    archive_page(current + 1)
-    return current, total
+    return current, total, updated
 
 
-num = 1
-while True:
-    current, total = archive_page(num)
-    if current < total:
-       num = current + 1
-    else:
-        break
+#def update(page):
+#    """
+#    顺序追加新信息.当出现插入重复则停止
+#    """
+#    parser = Parser(page)
+#    for data in parser.get_weibo_data():
+#        saver.save(data)
+#        #if double, update done
+#    return update 
 
-print 'count', saver.get_count()
 
-#def start_archive():
-#   page = load_first_page()
-#   total_count = get_weibo_total_count(page)
-#   archived_count = get_archived_count()
-  
+page = load_page(1)
+soup = Soup(page)
 
-#def check_status():
-#   total_count
-#   archived_count
-#   if total_count > archived_count:
-#       find out the start page num
-#       archive_page with ignore had_saved
-#   elif total_count < archived_count:
-#       maybe I failed, maybe you delete some bo
-#   else:
-#       done 
+#check remote and local
+remote = get_weibo_count(page)
+local = saver.get_count()
 
-#def continue_archive():
-#   get total count
-#   get archived count
+print remote, local
+if remote > local:
+    while True:
+        c, t, updated= archive_page(page)
+        if updated: break
+        if c < t:
+            page = load_page(c+1)
+        else:
+            break
+
+#check remote and local
+local = saver.get_count()
+print local
+
+if remote > local:
+    #计算由哪一页开始
+    num = local / 10 + 1
+    print 'continue page %s' % num
+    page = load_page(num)
+    while True:
+        c, t, updated = archive_page(page, ignore=True)
+        if c < t:
+            page = load_page(c+1)
+        else:
+            break
+
+
+
+        
 
     
+
+
+#num = 1
+#while True:
+#    current, total = archive_page(num)
+#    if current < total:
+#       num = current + 1
+#    else:
+#        break
+
+#print 'count', saver.get_count()
