@@ -67,11 +67,112 @@ class Parser(object):
     def get_page_info(self):
         return get_page_info(self.soup)
 
+    def get_total_page_count(self):
+        return get_page_info(self.soup)[1]
+
     def get_weibo(self, mid):
         return parse_weibo(self.soup, mid)
 
+    def parsing_weibo(self):
+        for mid in self.get_mids():
+            yield self.get_weibo(mid)
+
+    def had_next_page(self):
+        current, total = self.get_page_info()
+        return current < total
+
 
 from sqla_db import DBSaver as Archiver
+
+def create_page_parser(num):
+    page = loader.get_page(num)
+    return Parser(page)
+
+def archive_page(start, end, is_update=False):
+    current_page_num = start
+    archived_count = 0
+    while True:
+        parser = create_page_parser(current_page_num)
+
+        if not parser.is_valid():
+            print 'the page is not valid'
+            return False, archived_count
+        
+        for weibo in parser.parsing_weibo():
+            created = archiver.save(weibo)
+            
+            if created:
+                archived_count += 1
+            elif not is_update:
+                print 'double archive'
+                return False, archived_count
+            else:
+                print 'update success'
+                return True, archived_count
+        
+        print 'page %s / %s done, added %s new entries until now' % (current_page_num, end, archived_count)
+
+        if current_page_num < end:
+            current_page_num += 1
+        else:
+            return True, archived_count
+
+
+def fix_continue_archived_page(archived_count, end_page, prepage=10):
+    fixing_page = archived_count / 10 + 1  #如果不修正,返回这个能应付一般情况了
+    #start fixed
+    fixed_count = 0
+    formward_checked = False
+    afterward_checked = False
+    while True:
+        print 'checking page ', fixing_page
+        parser = create_page_parser(fixing_page)
+        #TODO 需保证页面有效
+        assert parser.is_valid()
+        
+        #获取当前页有多少时已存储的
+        mids = parser.get_mids()
+        exist_count = 0
+        for mid in mids:
+            is_exist = archiver.check_exist(mid)
+            if is_exist:
+                exist_count += 1
+
+        page_weibo_count = parser.get_page_weibo_count()
+
+        if exist_count == page_weibo_count:
+            if not afterward_checked:
+                #本页都已备份,但下一页未检测,尝试下一页
+                fixing_page += 1
+                formward_checked = True
+            else:
+                #下页已检查,修正完毕
+                fixing_page += 1
+                break
+        elif exist_count == 0:
+            if not formward_checked:
+                fixing_page -= 1
+                afterward_checked = True
+            else:
+                #上一页已检测,这页全没备份. 修正完毕
+                break
+        else:
+            #修正当前页
+            for weibo in parser.parsing_weibo():
+                created = archiver.save(weibo)
+                #重复忽略
+                if created:
+                    fixed_count += 1
+            assert fixed_count + exist_count == page_weibo_count
+            fixing_page += 1
+            break
+        #越界
+        if fixing_page == 0 or fixing_page > end_page:
+            break
+    return fixing_page, fixed_count
+
+
+
 
 loader = Loader()
 
@@ -84,92 +185,33 @@ loader.set_target(uid)
 #初始化保存
 archiver = Archiver(uid, debug=False)
 
-page = loader.get_page(1)
-parser = Parser(page)
+parser = create_page_parser(1)
 
-remote_count = parser.get_total_weibo_count()  #lock with this value durning archive
-current_page, total_page = parser.get_page_info()
+remote_count = parser.get_total_weibo_count()  #TODO lock with this value durning archive
+total_page = parser.get_total_page_count()
+
+archived_count = archiver.get_count()
 
 print 'remote count :', remote_count
-archived_count = archiver.get_count()
+print 'remote page count: ', total_page
 print 'archived_count :', archived_count
 
+is_success, archived_count = archive_page(start=1, end=total_page, is_update=True)
+print 'update success :', is_success
+print 'update count :', archived_count
 
-while parser.is_valid():
-    mids = parser.get_mids()
-    print len(mids)
-    counter = 0
-    created = False
-    for mid in mids:
-        weibo = parser.get_weibo(mid)
-        created = archiver.save(weibo)
-        if not created: break
-        counter += 1
-    if not created: break
-    assert counter == len(mids)
-    current, total = parser.get_page_info()
-    print 'done page %s / %s' % (current, total)
-    if current < total:
-        page = loader.get_page(current + 1)
-        parser = Parser(page)
-    else:
-        break
-
-#TODO 如果是parser.is_valid()出错,应该中断. 现在的机制没处理这个自动重试了
-if not parser.is_valid():
-    print 'network failed, try it later'
+if not is_success:
+    print 'update failed'
     exit()
 
 #now, update proccess finish
-#remote_count should always great than or equal the archived_count
+#XXX Fuck. will be delete remote_count should always great than or equal the archived_count
 archived_count = archiver.get_count()
 print 'archived_count :', archived_count
 
-if archived_count == remote_count:
-    exit()
 
-if archived_count > remote_count:
-    print 'WTF, I failed, AGAIN'
-    exit()
-
-continue_page = archived_count / 10 + 1
-
-former_checked = False
-afeter_checked = False
-while continue_page > 0 and continue_page <= total_page:
-    print 'checking page ', continue_page
-    page = loader.get_page(continue_page)
-    parser = Parser(page)
-
-    assert parser.is_valid()
-
-    mids = parser.get_mids()
-    exist_count = 0
-    for mid in mids:
-        is_exist = archiver.check_exist(mid)
-        if is_exist: exist_count += 1
-
-    current_page_weibo_count = parser.get_page_weibo_count()
-    if exist_count == current_page_weibo_count and not afeter_checked:
-        #本页的都已经备份, 且下页没为检测.尝试下一页
-        continue_page += 1
-        former_checked = True
-    elif exist_count == 0 and not former_checked:
-        #本页的都没备份,且不是前一页来的
-        continue_page -= 1
-        afeter_checked = True
-    else:
-        #本页部分备份或在前页全备份,本页无备份.备份此页.下一页全新开始
-        created_count = 0
-        for mid in mids:
-            weibo = parser.get_weibo(mid)
-            created = archiver.save(weibo)
-            if created: 
-                created_count += 1
-        assert created_count + exist_count == current_page_weibo_count
-        continue_page += 1
-        break
-
+continue_page, fixed_count = fix_continue_archived_page(archived_count, total_page)
+print 'fixed archived %s' % fixed_count
 
 print 'continue_page is ', continue_page
 
@@ -183,34 +225,21 @@ elif archived_count > remote_count:
     print 'WTF, I failed, AGAIN'
     exit()
 
+if continue_page == total_page:
+    print 'archived done'
+    exit()
 
-#TODO 此循环应该和上面那个循环逻辑一致.都是插入重复错误
-page = loader.get_page(continue_page)
-parser = Parser(page)
-while parser.is_valid():
-    mids = parser.get_mids()
-    created = False
-    for mid in mids:
-        weibo = parser.get_weibo(mid)
-        created = archiver.save(weibo)
-        #assert created
-    current, total = parser.get_page_info()
-    print 'done page %s / %s' % (current, total)
-    if current < total:
-        page = loader.get_page(current + 1)
-        parser = Parser(page)
-    else:
-        break
+#开始追加未保存的页面
+is_success, archived_count = archive_page(start=continue_page, end=total_page, is_update=False)
+
+print 'update success :', is_success
+print 'update count :', archived_count
 
 archived_count = archiver.get_count()
-print 'archived_count :', archived_count
 
-if archived_count == remote_count:
-    exit()
+print 'remote weibo count is ', remote_count
+print 'archived weibo count is ', archived_count
 
-elif archived_count > remote_count:
-    print 'WTF, I failed, AGAIN'
-    exit()
 
-else:
-    print 'my failed, miss some one'
+
+

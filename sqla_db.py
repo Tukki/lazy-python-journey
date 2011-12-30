@@ -47,10 +47,8 @@ class DBSaver(object):
 
     def check_exist(self, mid):
         conn = self.engine.connect()
-        print mid
         query = select([exists().where(items.c.mid==mid)])
         result = conn.execute(query).fetchone()[0]
-        print result
         conn.close()
         return result
 
