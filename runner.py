@@ -6,6 +6,7 @@ from BeautifulSoup import BeautifulSoup as Soup
 from auth import simulate_login
 from utils import build_opener
 from pageparse import *
+from sqla_db import DBSaver as Archiver
 
 #获取参数
 parser = argparse.ArgumentParser()
@@ -41,6 +42,7 @@ class Loader(object):
         return page
 
 
+#TODO 这个parser存在意义不大.考虑移除
 class Parser(object):
     def __init__(self, source):
         self.soup = Soup(source)
@@ -82,7 +84,6 @@ class Parser(object):
         return current < total
 
 
-from sqla_db import DBSaver as Archiver
 
 def create_page_parser(num):
     page = loader.get_page(num)
@@ -205,7 +206,6 @@ if not is_success:
     exit()
 
 #now, update proccess finish
-#XXX Fuck. will be delete remote_count should always great than or equal the archived_count
 archived_count = archiver.get_count()
 print 'archived_count :', archived_count
 
@@ -217,13 +217,6 @@ print 'continue_page is ', continue_page
 
 archived_count = archiver.get_count()
 print 'archived_count :', archived_count
-
-if archived_count == remote_count:
-    exit()
-
-elif archived_count > remote_count:
-    print 'WTF, I failed, AGAIN'
-    exit()
 
 if continue_page == total_page:
     print 'archived done'
