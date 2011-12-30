@@ -1,10 +1,22 @@
 #_*_ coding: utf-8 _*_
 #TODO logging
+import argparse
 from BeautifulSoup import BeautifulSoup as Soup
 
 from auth import simulate_login
 from utils import build_opener
 from pageparse import *
+
+#获取参数
+parser = argparse.ArgumentParser()
+parser.add_argument('-u', '--user', help='user email')
+parser.add_argument('-p', '--psw', help="password")
+parser.add_argument('-t', '--target', help='target user ID')
+args = parser.parse_args()
+
+email = args.user
+psw = args.psw
+uid = args.target
 
 class Loader(object):
     
@@ -24,7 +36,6 @@ class Loader(object):
 
     def _load_page(self, num):
         url = "http://weibo.cn/%(uid)s/profile?gsid=%(gsid)s&page=%(page)s" % {'uid': self._target_uid, 'gsid': self.gsid, 'page': num}
-        print url
         r = self.opener.open(url)
         page = r.read()
         return page
@@ -62,11 +73,6 @@ class Parser(object):
 
 from sqla_db import DBSaver as Archiver
 
-
-email = 'koran.game@gmail.com'
-psw = '123123123'
-uid = "2214658753"
-
 loader = Loader()
 
 #登录
@@ -76,7 +82,7 @@ print loader.gsid
 
 loader.set_target(uid)
 #初始化保存
-archiver = Archiver(uid, debug=True)
+archiver = Archiver(uid, debug=False)
 
 page = loader.get_page(1)
 parser = Parser(page)
@@ -84,10 +90,6 @@ parser = Parser(page)
 remote_count = parser.get_total_weibo_count()  #lock with this value durning archive
 
 print 'remote count :', remote_count
-
-print 'page_count :', parser.get_page_weibo_count()
-
-print 'mids :', parser.get_mids()
 
 while parser.is_valid():
     mids = parser.get_mids()
@@ -105,6 +107,8 @@ while parser.is_valid():
     else:
         break
 
+#now, update proccess finish
+#remote_count should always great than or equal the archived_count
 archived_count = archiver.get_count()
 print 'archived_count :', archived_count
 
@@ -115,13 +119,42 @@ if archived_count > remote_count:
     print 'WTF, I failed, AGAIN'
     exit()
 
-#quotient, remainer = divmod(archived_count, 10)
-#num = quotient  #因为会往前,不用考虑商了
+quotient, remainer = divmod(archived_count, 10)
+num = quotient + 1 #
+cursur = 0
+
+#TODO 此循环应该和上面那个循环逻辑一致.都是插入重复错误
+page = loader.get_page(num)
+parser = Parser(page)
+while parser.is_valid():
+    mids = parser.get_mids()
+    created = False
+    for mid in mids[cursur:]:
+        weibo = parser.get_weibo(mid)
+        created = archiver.save(weibo)
+        #assert created
+    current, total = parser.get_page_info()
+    if current < total:
+        page = loader.get_page(current + 1)
+        parser = Parser(page)
+    else:
+        break
+
+archived_count = archiver.get_count()
+print 'archived_count :', archived_count
+
+if archived_count == remote_count:
+    exit()
+
+elif archived_count > remote_count:
+    print 'WTF, I failed, AGAIN'
+    exit()
+
+else:
+    print 'my failed, miss some one'
 
 
 """
-#now, update proccess finish
-#remote_count should always great than or equal the archived_count
 archived_count = archiver.get_weibo_count()
 
 if archived_count == remote_count:
@@ -143,19 +176,4 @@ else:
     #assert that the unarchived is not out of order
     now the page_num is the continue archive start page
 
-parser for loader.get_page(page_num)
-while parser.is_valid():
-    for weibo in parser:
-        created = archiver.save(weibo)
-        assert created
-    parser for load.get_page(next)
-
-archived_count = archiver.get_weibo_count()
-
-if archived_count == remote_count:
-    archived success, exit
-elif archived_count > remote_count:
-    my failure
-else:
-    maybe some weibo had remote deleted
 """

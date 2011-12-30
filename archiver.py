@@ -97,7 +97,7 @@ if remote > local:
     #TODO 还是有个问题.已更新的那部分有删除情况.会导致这里的计算错位
     #TODO 10不是个标准数. 用动态试错的方式确认追加起始点?
     quotien, remainer = divmod(local, per_page)
-    num = remainer == 0 and (quotien + 1) or quotien
+    num = remainer == 0 and (quotien + 1) or quotien  #原来这里先天错误
     print 'continue page %s' % num
     page = load_page(num)
     while True:
