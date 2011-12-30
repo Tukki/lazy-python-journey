@@ -97,19 +97,28 @@ print 'archived_count :', archived_count
 
 while parser.is_valid():
     mids = parser.get_mids()
+    print len(mids)
+    counter = 0
     created = False
     for mid in mids:
         weibo = parser.get_weibo(mid)
         created = archiver.save(weibo)
         if not created: break
-
+        counter += 1
     if not created: break
+    assert counter == len(mids)
     current, total = parser.get_page_info()
+    print 'done page %s / %s' % (current, total)
     if current < total:
         page = loader.get_page(current + 1)
         parser = Parser(page)
     else:
         break
+
+#TODO 如果是parser.is_valid()出错,应该中断. 现在的机制没处理这个自动重试了
+if not parser.is_valid():
+    print 'network failed, try it later'
+    exit()
 
 #now, update proccess finish
 #remote_count should always great than or equal the archived_count
@@ -128,6 +137,7 @@ continue_page = archived_count / 10 + 1
 former_checked = False
 afeter_checked = False
 while continue_page > 0 and continue_page <= total_page:
+    print 'checking page ', continue_page
     page = loader.get_page(continue_page)
     parser = Parser(page)
 
@@ -185,6 +195,7 @@ while parser.is_valid():
         created = archiver.save(weibo)
         #assert created
     current, total = parser.get_page_info()
+    print 'done page %s / %s' % (current, total)
     if current < total:
         page = loader.get_page(current + 1)
         parser = Parser(page)
@@ -203,28 +214,3 @@ elif archived_count > remote_count:
 
 else:
     print 'my failed, miss some one'
-
-
-"""
-archived_count = archiver.get_weibo_count()
-
-if archived_count == remote_count:
-    archived success, exit
-
-
-#try find out the page to continue archive
-get page_num base on 10-per-page
-parser for loader.get_page(page_num)
-for weibo in parser:
-    get unarchived_count 
-if unarchived_count == parser.get_page_weibo_count():
-    #all unarchived, try former page
-    page_num -= 1 until 0
-elif unarchived_count == 0:
-    #all archived, try next page
-    page_num += 1
-else:
-    #assert that the unarchived is not out of order
-    now the page_num is the continue archive start page
-
-"""
