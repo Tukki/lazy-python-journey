@@ -95,7 +95,7 @@ print local
 if remote > local:
     #计算由哪一页开始. 没有余数才由下一页开始获取数据
     #TODO 还是有个问题.已更新的那部分有删除情况.会导致这里的计算错位
-    #TODO 10不是个标准数
+    #TODO 10不是个标准数. 用动态试错的方式确认追加起始点?
     quotien, remainer = divmod(local, per_page)
     num = remainer == 0 and (quotien + 1) or quotien
     print 'continue page %s' % num
