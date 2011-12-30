@@ -3,14 +3,14 @@
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy import (Table, Column, String, BigInteger, 
                         Boolean, DateTime)
-from sqlalchemy.sql import func, select
+from sqlalchemy.sql import func, select, exists
 from sqlalchemy.exc import IntegrityError
 
 
 metadata = MetaData()
 
 items = Table('items', metadata, 
-              Column('mid', String, unique=True),
+              Column('mid', String, primary_key=True, unique=True),
               Column('text', String),
               Column('image', String),
               Column('time', String),
@@ -45,6 +45,14 @@ class DBSaver(object):
         conn.close()
         return count
 
+    def check_exist(self, mid):
+        conn = self.engine.connect()
+        print mid
+        query = select([exists().where(items.c.mid==mid)])
+        result = conn.execute(query).fetchone()[0]
+        print result
+        conn.close()
+        return result
 
 class DumpSaver(object):
     def __init__(self, name, debug=True):

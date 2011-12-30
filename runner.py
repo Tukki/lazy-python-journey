@@ -88,8 +88,12 @@ page = loader.get_page(1)
 parser = Parser(page)
 
 remote_count = parser.get_total_weibo_count()  #lock with this value durning archive
+current_page, total_page = parser.get_page_info()
 
 print 'remote count :', remote_count
+archived_count = archiver.get_count()
+print 'archived_count :', archived_count
+
 
 while parser.is_valid():
     mids = parser.get_mids()
@@ -119,17 +123,64 @@ if archived_count > remote_count:
     print 'WTF, I failed, AGAIN'
     exit()
 
-quotient, remainer = divmod(archived_count, 10)
-num = quotient + 1 #
-cursur = 0
+continue_page = archived_count / 10 + 1
+
+former_checked = False
+afeter_checked = False
+while continue_page > 0 and continue_page <= total_page:
+    page = loader.get_page(continue_page)
+    parser = Parser(page)
+
+    assert parser.is_valid()
+
+    mids = parser.get_mids()
+    exist_count = 0
+    for mid in mids:
+        is_exist = archiver.check_exist(mid)
+        if is_exist: exist_count += 1
+
+    current_page_weibo_count = parser.get_page_weibo_count()
+    if exist_count == current_page_weibo_count and not afeter_checked:
+        #本页的都已经备份, 且下页没为检测.尝试下一页
+        continue_page += 1
+        former_checked = True
+    elif exist_count == 0 and not former_checked:
+        #本页的都没备份,且不是前一页来的
+        continue_page -= 1
+        afeter_checked = True
+    else:
+        #本页部分备份或在前页全备份,本页无备份.备份此页.下一页全新开始
+        created_count = 0
+        for mid in mids:
+            weibo = parser.get_weibo(mid)
+            created = archiver.save(weibo)
+            if created: 
+                created_count += 1
+        assert created_count + exist_count == current_page_weibo_count
+        continue_page += 1
+        break
+
+
+print 'continue_page is ', continue_page
+
+archived_count = archiver.get_count()
+print 'archived_count :', archived_count
+
+if archived_count == remote_count:
+    exit()
+
+elif archived_count > remote_count:
+    print 'WTF, I failed, AGAIN'
+    exit()
+
 
 #TODO 此循环应该和上面那个循环逻辑一致.都是插入重复错误
-page = loader.get_page(num)
+page = loader.get_page(continue_page)
 parser = Parser(page)
 while parser.is_valid():
     mids = parser.get_mids()
     created = False
-    for mid in mids[cursur:]:
+    for mid in mids:
         weibo = parser.get_weibo(mid)
         created = archiver.save(weibo)
         #assert created
