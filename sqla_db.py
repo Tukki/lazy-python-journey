@@ -4,6 +4,8 @@ from sqlalchemy import create_engine, MetaData
 from sqlalchemy import (Table, Column, String, BigInteger, 
                         Boolean, DateTime)
 from sqlalchemy.sql import func, select
+from sqlalchemy.exc import IntegrityError
+
 
 metadata = MetaData()
 
@@ -23,13 +25,18 @@ class DBSaver(object):
         url = "sqlite:///%s.db" % name
         self.engine = create_engine(url, echo=debug)
         metadata.create_all(bind=self.engine)
-        self.conn = self.engine.connect()
 
     def save(self, data):
-        conn = self.engine.connect()
-        ins = items.insert()
-        conn.execute(ins, **data)
-        conn.close()
+        conn = self.engine.connect()  #TODO 问题应该出现在这.每次写入都开闭开闭的,低效
+        try:
+            ins = items.insert()
+            conn.execute(ins, **data)
+            created = True
+        except IntegrityError:
+            created = False
+        finally:
+            conn.close()
+        return created
 
     def get_count(self):
         conn = self.engine.connect()
