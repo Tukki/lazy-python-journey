@@ -4,19 +4,20 @@
         <title>Weibo Remind Crackr</title>
     </head>
     <body>
-    <div> for {{ uid }} </div>
-    间隔<input type="text" name="interval" value=30>分钟
+    间隔<input type="text" name="interval" value=5>分钟
     <a href="javascript:void(0)" onclick="check_remind()">Check Now</a>
     <table border=1>
         <tr id="remind_list">
-            <th>Time</th>
-            <th>Code</th>
-            <th>Status</th>
-            <th>Follower</th>
-            <th>DM</th>
-            <th>Mention CMT</th>
-            <th>Mention Status</th>
-            <th>Notice</th>
+            <th>time</th>
+            <th>code</th>
+            <th>status</th>
+            <th>follower</th>
+            <th>cmt</th>
+            <th>dm</th>
+            <th>mention cmt</th>
+            <th>mention status</th>
+            <th>group</th>
+            <th>notice</th>
         </tr>
         <script id="remind_content" type="text/x-jquery-tmpl">
         <tr>
@@ -24,16 +25,24 @@
             <td>${code}</td>
             <td>${status}</td>
             <td>${follower}</td>
+            <td>${cmt}</td>
             <td>${dm}</td>
             <td>${mention_cmt}</td>
             <td>${mention_status}</td>
+            <td>${group}</td>
             <td>${notice}</td>
         </tr>
         </script>
     </ul>
+    <div style="width:90%">
+        <a href="javascript:void(0)" onclick="dump_history()">Dump History</a><br>
+        <textarea id="rm_history" ></textarea>
+    </div>
+
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js" type="text/javascript"></script>
     <script src="http://ajax.aspnetcdn.com/ajax/jquery.templates/beta1/jquery.tmpl.min.js" type="text/javascript"></script>
     <script type="text/javascript">
+        var rm_history = new Array();
         function check_remind(){
             var url = "http://rm.api.weibo.com/2/remind/unread_count.json?source={{ source }}&uid={{ uid }}&callback=?";
             $.getJSON(url, function(response){
@@ -41,12 +50,19 @@
                     var data = response.data;
                     data.code = response.code;
                     var date = new Date();
-                    data.time = date.getTime();
+                    data.time = date.toLocaleString();
+                    rm_history.push(data);
                     $("#remind_content").tmpl(data).insertAfter("#remind_list");
                     })
         }
+
+        function dump_history(){
+            var str = JSON.stringify(rm_history);
+            $("#rm_history").val(str);
+        }
         check_remind();
         setInterval(check_remind, 5*60*1000);
+        //alert(JSON.stringify(data))
     </script>
     </body>
 </html>
