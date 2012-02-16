@@ -1,0 +1,52 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> 
+        <title>Weibo Remind Crackr</title>
+    </head>
+    <body>
+    <div> for {{ uid }} </div>
+    间隔<input type="text" name="interval" value=30>分钟
+    <a href="javascript:void(0)" onclick="check_remind()">Check Now</a>
+    <table border=1>
+        <tr id="remind_list">
+            <th>Time</th>
+            <th>Code</th>
+            <th>Status</th>
+            <th>Follower</th>
+            <th>DM</th>
+            <th>Mention CMT</th>
+            <th>Mention Status</th>
+            <th>Notice</th>
+        </tr>
+        <script id="remind_content" type="text/x-jquery-tmpl">
+        <tr>
+            <td>${time}</td>
+            <td>${code}</td>
+            <td>${status}</td>
+            <td>${follower}</td>
+            <td>${dm}</td>
+            <td>${mention_cmt}</td>
+            <td>${mention_status}</td>
+            <td>${notice}</td>
+        </tr>
+        </script>
+    </ul>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.6/jquery.min.js" type="text/javascript"></script>
+    <script src="http://ajax.aspnetcdn.com/ajax/jquery.templates/beta1/jquery.tmpl.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        function check_remind(){
+            var url = "http://rm.api.weibo.com/2/remind/unread_count.json?source={{ source }}&uid={{ uid }}&callback=?";
+            $.getJSON(url, function(response){
+                    console.log(response);
+                    var data = response.data;
+                    data.code = response.code;
+                    var date = new Date();
+                    data.time = date.getTime();
+                    $("#remind_content").tmpl(data).insertAfter("#remind_list");
+                    })
+        }
+        check_remind();
+        setInterval(check_remind, 5*60*1000);
+    </script>
+    </body>
+</html>
