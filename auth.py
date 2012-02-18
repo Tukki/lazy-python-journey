@@ -53,18 +53,19 @@ class WeiboOAuthMixin(OAuthMixin):
             key=self.settings["weibo_app_key"],
             secret=self.settings["weibo_app_secret"])
 
-    #TODO 其实这里不用回调?
     def _oauth_get_user(self, access_token, callback):
+        logging.debug('oauth get user access_token: %s', access_token)
+        """
+        the access token includes secret, key, user_id
+        """
         callback = self.async_callback(self._parse_user_response, callback)
-        #TODO check here, if other?
         self.weibo_request(
-            #"/users/show" + access_token["username"],
-            "/account/verify_credentials",
-            access_token=access_token, 
+            "/users/show/" + access_token["user_id"],
+            access_token=access_token,
             callback=callback)
 
     def _parse_user_response(self, callback, user):
-        #TODO double check the parameter or id
+        # It just work like TwitterMixin, but I don't known if this  user['username'] is matter to tornado
         if user:
             user["username"] = user["screen_name"]
         callback(user)

@@ -19,14 +19,14 @@ class AuthenticationHandler(tornado.web.RequestHandler,
         self.authorize_redirect('/login')
 
     def _on_auth(self, user):
+        """
+        check user info, visit http://open.weibo.com/wiki/Users/show 
+        """
         if not user:
             raise tornado.web.HTTPError(500, "Weibo auth failed")
         self.set_secure_cookie('weibo_session',
-                               tornado.escape.json_encode(user),
-                               #math.ceil(user['session_expires'] / 86400.0)
-                              )
+                               tornado.escape.json_encode(user))
         self.redirect("/")
-        #self.write(user)
 
 class HomeHandler(tornado.web.RequestHandler):
 
