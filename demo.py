@@ -20,7 +20,7 @@ class AuthenticationHandler(tornado.web.RequestHandler,
 
     def _on_auth(self, user):
         """
-        check user info, visit http://open.weibo.com/wiki/Users/show 
+        the OAuth authorized user and access token on callback.
         """
         if not user:
             raise tornado.web.HTTPError(500, "Weibo auth failed")
@@ -28,7 +28,7 @@ class AuthenticationHandler(tornado.web.RequestHandler,
                                tornado.escape.json_encode(user))
         self.redirect("/")
 
-class HomeHandler(tornado.web.RequestHandler):
+class HomeHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):
 
     def get_current_user(self):
         session = self.get_secure_cookie('weibo_session')
@@ -41,9 +41,19 @@ class HomeHandler(tornado.web.RequestHandler):
         return "/login"
 
     @tornado.web.authenticated
+    @tornado.web.asynchronous
     def get(self):
         user = self.get_current_user()
-        self.write(user)
+        self.weibo_request('/statuses/unread',
+                           access_token=user['access_token'],
+                           callback=self.async_callback(self._on_response))
+    
+    def _on_response(self, data):
+        html = []
+        html.append('welcome back, %(username)s' % self.get_current_user())
+        html.append(str(data))
+        self.write("<br>".join(html))
+        self.finish()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
