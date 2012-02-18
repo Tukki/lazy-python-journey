@@ -54,7 +54,6 @@ class WeiboOAuthMixin(OAuthMixin):
             secret=self.settings["weibo_app_secret"])
 
     def _oauth_get_user(self, access_token, callback):
-        logging.debug('oauth get user access_token: %s', access_token)
         """
         the access token includes secret, key, user_id
         """
