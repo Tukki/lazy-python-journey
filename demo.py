@@ -30,7 +30,7 @@ class AuthenticationHandler(tornado.web.RequestHandler,
                                tornado.escape.json_encode(user))
         self.redirect("/")
 
-class HomeHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):
+class BaseHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):
 
     def get_current_user(self):
         session = self.get_secure_cookie('weibo_session')
@@ -42,6 +42,8 @@ class HomeHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):
     def get_login_url(self):
         return "/login"
 
+
+class HomeHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.web.asynchronous
     def get(self):
@@ -57,6 +59,29 @@ class HomeHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):
         self.write("<br>".join(html))
         self.finish()
 
+
+from tornado import gen
+from tornado import httpclient
+
+class GenAsyncHandler(BaseHandler):
+
+    @tornado.web.authenticated
+    @tornado.web.asynchronous
+    @gen.engine
+    def get(self):
+        user = self.get_current_user()
+        r1, r2 = yield [gen.Task(self.weibo_request, 
+                                 '/statuses/unread', 
+                                 access_token=user['access_token']),
+                        gen.Task(self.weibo_request,
+                                 '/statuses/user_timeline',
+                                 access_token=user['access_token']),
+                       ]
+        self.write(r1)
+        self.write(str(r2))
+        self.finish()  #must finish
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     settings = {
@@ -70,6 +95,7 @@ if __name__ == "__main__":
     application = tornado.web.Application([
         (r"/", HomeHandler),
         (r"/login", AuthenticationHandler),
+        (r'/gen', GenAsyncHandler),
     ], **settings)
     application.listen(8000)
     tornado.ioloop.IOLoop.instance().start()
