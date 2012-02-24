@@ -24,12 +24,10 @@ class AuthenticationHandler(tornado.web.RequestHandler,
         """
         if not user:
             raise tornado.web.HTTPError(500, "Weibo auth failed")
-        cookie = {}
-        cookie['access_token'] = user['access_token']
-        cookie['username'] = user['username']
-        cookie['id'] = user['id']
+        logging.debug(user)
+        #do some with the user or the access_token 
         self.set_secure_cookie('weibo_session',
-                               tornado.escape.json_encode(cookie))
+                               tornado.escape.json_encode(user))
         self.redirect("/")
 
 class HomeHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):

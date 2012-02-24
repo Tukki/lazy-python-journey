@@ -67,5 +67,7 @@ class WeiboOAuthMixin(OAuthMixin):
         # It just work like TwitterMixin, but I don't known if this  user['username'] is matter to tornado
         if user:
             user["username"] = user["screen_name"]
+            #remove the status, make it just carry the identify.
+            if 'status' in user: del user['status']
         callback(user)
 
