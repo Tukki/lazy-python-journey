@@ -6,10 +6,10 @@ import tornado.web
 import tornado.ioloop
 import tornado.escape
 
-import auth
+import tornado_weibo_oauth
 
 class AuthenticationHandler(tornado.web.RequestHandler,
-                   auth.WeiboOAuthMixin):
+                   tornado_weibo_oauth.WeiboOAuthMixin):
     @tornado.web.asynchronous
     def get(self):
         if self.get_argument("oauth_token", None):
@@ -30,7 +30,7 @@ class AuthenticationHandler(tornado.web.RequestHandler,
                                tornado.escape.json_encode(user))
         self.redirect("/")
 
-class BaseHandler(tornado.web.RequestHandler, auth.WeiboOAuthMixin):
+class BaseHandler(tornado.web.RequestHandler, tornado_weibo_oauth.WeiboOAuthMixin):
 
     def get_current_user(self):
         session = self.get_secure_cookie('weibo_session')
