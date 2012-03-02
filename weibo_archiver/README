@@ -1,0 +1,11 @@
+usage: 
+python archiver.py -u x@x.com -p psw -t target_user_id
+<12-03-02 Fri 17:45>
+
+
+有点不想写了. 页面加载有了,lxml的数据处理有了,保存机制和数据库操作现在不太想写
+<12-03-02 Fri 23:30>
+
+整理原来的微博备份实现过来
+<12-03-02 Fri 15:25>
+
