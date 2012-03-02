@@ -19,6 +19,9 @@ def get_args():
 
 
 if __name__ == "__main__":
+    """
+    python archiver.py -u *** -p *** -t ***
+    """
     email, psw, target = get_args()
     loader = WeiboLoader()
     loader.login(email, psw)

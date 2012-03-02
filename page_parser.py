@@ -47,6 +47,9 @@ def clear_contents(e):
 
 def parse_weibo_page(src):
     """
+    #IMPORTANT: 
+        如果是当前登录用户自己的微博列表页, 获取到的weibo数恒为10.
+        当如何是非当前登录用户的微博列表页, 则存在少于10条微博的可能. 
     手机版微博的结构
     <div class="c" id="M_xxxx">
     </div>
@@ -83,7 +86,9 @@ def parse_weibo_page(src):
         rt_user = ""
 
         mid = wb.xpath("@id")[0][2:]
-        time_and_source = wb.xpath('//span[@class="ct"]//text()')[0].split()
+
+        #TODO 对于"几分钟前 ...."的格式没有处理
+        time_and_source = wb.xpath('.//span[@class="ct"]//text()')[0].split()
         time = " ".join((time_and_source[0], time_and_source[1]))
         source = time_and_source[2]
 
@@ -104,6 +109,7 @@ def parse_weibo_page(src):
             contents = clear_contents(divs[1])  #转发理由主体
             content = "".join(contents[1:-6])
             
+            #TODO BUG 转发内容删除的情况未处理
             rt_contents = clear_contents(divs[0]) #转发内容主题
             rt_user = rt_contents[1]
             rt_content = "".join(rt_contents[3:-2])
