@@ -26,27 +26,38 @@ def build_browser(headers=None):
 
 _WEIBO_SSO = "http://3g.sina.com.cn/prog/wapsite/sso/"
 _WEIBO_LOGIN_URL = _WEIBO_SSO + "login.php"
+_WEIBO_PAGE_TEMPLATE = "http://weibo.cn/%(uid)s/profile?gsid=%(gsid)s&page=%(page)s"  #新浪微博直接页面地址模板
 
 class WeiboLoader(object):
     
-    def __init__(self, brower=None):
-        self.brower = brower or build_browser()
-        self.gsid = ""
+    def __init__(self, browswer=None):
+        self.browswer = browswer or build_browser()
+        self.gsid = None
+        self._uid = None
 
     @property
     def is_logined(self):
         return self.gsid and True or False
 
     def login(self, email, psw):
-        login_page = self.brower.open(_WEIBO_LOGIN_URL).read()
+        login_page = self.browswer.open(_WEIBO_LOGIN_URL).read()
         action, values = parse_login_form(login_page)
         values = update_form_values(values, email, psw)
         
         submit_to = _WEIBO_SSO + action
-        response = self.brower.open(submit_to, urllib.urlencode(values))
+        response = self.browswer.open(submit_to, urllib.urlencode(values))
         success_page = response.read()
         self.gsid = parse_gsid(success_page)
         return self.is_logined
 
+    def bind_target(self, uid):
+        self._uid = uid
+
     def load_page(self, page_number):
-        pass
+        assert self.is_logined and self._uid
+        url = _WEIBO_PAGE_TEMPLATE % {'uid': self._uid, 
+                                      'gsid': self.gsid, 
+                                      'page': page_number,
+                                     }
+        page = self.browswer.open(url).read()
+        return page
