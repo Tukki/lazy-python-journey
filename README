@@ -1,3 +1,8 @@
+usage: 
+python archiver.py -u x@x.com -p psw -t target_user_id
+< 12-03-02 Fri 17:45 >
+
+
 整理原来的微博备份实现过来
 < 12-03-02 Fri 15:25 >
 
